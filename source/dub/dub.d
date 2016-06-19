@@ -94,6 +94,7 @@ class Dub {
 		Path m_rootPath;
 		Path m_tempPath;
 		Path m_userDubPath, m_systemDubPath;
+		Json m_dubConfig;
 		Json m_systemConfig, m_userConfig;
 		Path m_projectPath;
 		Project m_project;
@@ -171,18 +172,36 @@ class Dub {
 
 	private void init()
 	{
-		import std.file : tempDir;
-		version(Windows){
-			m_systemDubPath = Path(environment.get("ProgramData")) ~ "dub/";
-			m_userDubPath = Path(environment.get("APPDATA")) ~ "dub/";
+		import std.file : tempDir, thisExePath;
+
+		Path dubConfigPath = Path(thisExePath()).parentPath ~ "settings.json";
+		m_dubConfig = jsonFromFile(dubConfigPath, true);
+		
+		m_systemDubPath = Path(m_dubConfig["systemDubPath"].opt!string());
+		m_userDubPath = Path(m_dubConfig["userDubPath"].opt!string());
+		m_tempPath = Path(m_dubConfig["tempPath"].opt!string());
+		string proxy = m_dubConfig["http_proxy"].opt!string();
+		if (proxy.length) {
+			environment["http_proxy"] = proxy;
+		}
+
+		version(Windows) {
+			if (m_systemDubPath.empty)
+				m_systemDubPath = Path(environment.get("ProgramData")) ~ "dub/";
+			if (m_userDubPath.empty)
+				m_userDubPath = Path(environment.get("APPDATA")) ~ "dub/";
 		} else version(Posix){
-			m_systemDubPath = Path("/var/lib/dub/");
-			m_userDubPath = Path(environment.get("HOME")) ~ ".dub/";
+			if (m_systemDubPath.empty)
+				m_systemDubPath = Path("/var/lib/dub/");
+			if (m_userDubPath.empty)
+				m_userDubPath = Path(environment.get("HOME")) ~ ".dub/";
 			if(!m_userDubPath.absolute)
 				m_userDubPath = Path(getcwd()) ~ m_userDubPath;
 		}
 
-		m_tempPath = Path(tempDir);
+		if (m_tempPath.empty)
+			m_tempPath = Path(tempDir);
+
 		m_userConfig = jsonFromFile(m_userDubPath ~ "settings.json", true);
 		m_systemConfig = jsonFromFile(m_systemDubPath ~ "settings.json", true);
 
