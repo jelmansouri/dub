@@ -92,7 +92,6 @@ class Dub {
 		PackageManager m_packageManager;
 		PackageSupplier[] m_packageSuppliers;
 		Path m_rootPath;
-		Path m_tempPath;
 		Path m_userDubPath, m_systemDubPath;
 		Json m_dubConfig;
 		Json m_systemConfig, m_userConfig;
@@ -179,12 +178,11 @@ class Dub {
 		
 		m_systemDubPath = Path(m_dubConfig["systemDubPath"].opt!string());
 		m_userDubPath = Path(m_dubConfig["userDubPath"].opt!string());
-		m_tempPath = Path(m_dubConfig["tempPath"].opt!string());
+		string tempDirPath = m_dubConfig["tempPath"].opt!string();
 		string proxy = m_dubConfig["http_proxy"].opt!string();
 		if (proxy.length) {
 			environment["http_proxy"] = proxy;
 		}
-
 		version(Windows) {
 			if (m_systemDubPath.empty)
 				m_systemDubPath = Path(environment.get("ProgramData")) ~ "dub/";
@@ -195,13 +193,16 @@ class Dub {
 				m_systemDubPath = Path("/var/lib/dub/");
 			if (m_userDubPath.empty)
 				m_userDubPath = Path(environment.get("HOME")) ~ ".dub/";
-			if(!m_userDubPath.absolute)
-				m_userDubPath = Path(getcwd()) ~ m_userDubPath;
 		}
+		if(!m_systemDubPath.absolute)
+			m_systemDubPath = Path(getcwd()) ~ m_userDubPath;
+		if(!m_userDubPath.absolute)
+			m_userDubPath = Path(getcwd()) ~ m_userDubPath;
 
-		if (m_tempPath.empty)
-			m_tempPath = Path(tempDir);
-
+		if (!tempDirPath.length)
+			tempDirPath = tempDir;
+		
+		setTempDir(tempDirPath);
 		m_userConfig = jsonFromFile(m_userDubPath ~ "settings.json", true);
 		m_systemConfig = jsonFromFile(m_systemDubPath ~ "settings.json", true);
 

@@ -28,12 +28,21 @@ import std.typecons;
 import std.zip;
 version(DubUseCurl) import std.net.curl;
 
-
+private Path temporary_directory;
 private Path[] temporary_files;
 
-Path getTempDir()
-{
-	return Path(std.file.tempDir());
+void setTempDir(string tempDirPath) {
+	temporary_directory = Path(tempDirPath);
+	if(!temporary_directory.absolute)
+		temporary_directory = Path(getcwd()) ~ temporary_directory;
+}
+
+Path getTempDir() {
+	if (temporary_directory.empty) {
+		return Path(std.file.tempDir());
+	}
+
+	return temporary_directory;
 }
 
 Path getTempFile(string prefix, string extension = null)
